@@ -15,7 +15,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
-Route::get('/checkconnection', [RegisteredUserController::class, 'checkConnection']);
+Route::get('checkconnection', [RegisteredUserController::class, 'checkConnection']);
 Route::post('loginmobile',[RegisteredUserController::class, 'login']);
 Route::get('jabatan',[RegisteredUserController::class, 'jabatan']);
 Route::get('cabang',[RegisteredUserController::class, 'cabang']);

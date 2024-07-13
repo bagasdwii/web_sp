@@ -19,8 +19,8 @@ class AssignRoleToUser
     public function handle(UserRegisteredMobile $event): void
     {
         // Eager load jabatan dan nip relations
-        $user = User::with(['jabatan', 'nip', 'kepalaCabang', 'supervisor', 'adminKas', 'wilayah'])->find($event->user->id);
-    Log::info('AssignRoleToUser listener invoked', ['user' => $user]);
+        $user = User::with(['jabatan', 'nip', 'pegawaiKepalaCabang', 'pegawaiSupervisor', 'pegawaiAdminKas','pegawaiAccountOfficer', 'wilayah'])->find($event->user->id);
+        Log::info('AssignRoleToUser listener invoked', ['user' => $user]);
     
         if ($user->jabatan_id == '2') {
             Log::info('Creating PegawaiKepalaCabang record');

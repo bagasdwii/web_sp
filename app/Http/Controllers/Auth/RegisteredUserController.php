@@ -18,7 +18,6 @@ use App\Models\PegawaiSupervisor;
 use Illuminate\Routing\Controller;
 use App\Models\PegawaiKepalaCabang;
 use Illuminate\Support\Facades\Log;
-use App\Events\UserRegisteredMobile;
 use App\Models\PegawaiAccountOffice;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -642,7 +641,7 @@ class RegisteredUserController extends Controller
                 'tingkat' => 'required|integer',
                 'tanggal' => 'required|date',
                 'keterangan' => 'nullable|string',
-                'bukti_gambar' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048', // Validate image file
+                'bukti_gambar' => 'image|mimes:jpeg,png,jpg,gif', // Validate image file
                 'scan_pdf' => 'required|mimes:pdf|max:2048', // Validate PDF file
                 'idAccountOfficer' => 'required|integer'
             ]);
@@ -719,7 +718,7 @@ class RegisteredUserController extends Controller
 
     public function getNasabah(Request $request)
     {
-        Log::info('Request received for getCustomers', ['request' => $request->all()]);
+        Log::info('Request received for getNasabah', ['request' => $request->all()]);
         $user = Auth::user();
         Log::info('Authenticated user', ['user' => $user]);
         $jabatan = $user->jabatan->nama_jabatan;
@@ -729,12 +728,10 @@ class RegisteredUserController extends Controller
 
         // Eager load semua relasi yang diperlukan
         $query = Nasabah::with([
-            'cabang' => function ($query) {
-                $query->select('id_cabang', 'nama_cabang'); // Pilih hanya kolom yang diperlukan
-            }, 
-            'wilayah:id_wilayah,nama_wilayah', 
-            'adminkas:id_admin_kas,nama_admin_kas', 
-            'accountofficer:id_account_officer,nama_account_officer', 
+            'cabang:id_cabang,nama_cabang',
+            'wilayah:id_wilayah,nama_wilayah',
+            'adminkas:id_admin_kas,nama_admin_kas',
+            'accountofficer:id_account_officer,nama_account_officer',
             'suratPeringatan' => function ($query) {
                 $query->orderBy('tingkat', 'desc'); // Urutkan surat peringatan berdasarkan tingkat dari yang terbesar
             }
@@ -813,29 +810,33 @@ class RegisteredUserController extends Controller
         Log::info('Executing query to fetch nasabahs');
         $nasabahs = $query->paginate($perPage);
 
-        Log::info('Transforming nasabah data to include highest Surat Peringatan');
+        Log::info('Transforming nasabah data to include all Surat Peringatan');
         $nasabahs->getCollection()->transform(function($nasabah) {
-            $highestSuratPeringatan = $nasabah->suratPeringatan->first(); // Surat Peringatan dengan tingkat tertinggi
+            $allSuratPeringatan = $nasabah->suratPeringatan->map(function($suratPeringatan) {
+                return [
+                    'no' => $suratPeringatan->no,
+                    'tingkat' => $suratPeringatan->tingkat,
+                    'tanggal' => $suratPeringatan->tanggal,
+                    'keterangan' => $suratPeringatan->keterangan,
+                    'bukti_gambar' => $suratPeringatan->bukti_gambar,
+                    'scan_pdf' => $suratPeringatan->scan_pdf,
+                    'id_account_officer' => $suratPeringatan->id_account_officer,
+                ];
+            });
+
             return [
                 'no' => $nasabah->no,
                 'nama' => $nasabah->nama,
                 'nama_cabang' => $nasabah->cabang->nama_cabang,
-                'surat_peringatan' => $highestSuratPeringatan ? [
-                    'no' => $highestSuratPeringatan->no,
-                    'tingkat' => $highestSuratPeringatan->tingkat,
-                    'tanggal' => $highestSuratPeringatan->keterangan,
-                    'keterangan' => $highestSuratPeringatan->tanggal,
-                    'bukti_gambar' => $highestSuratPeringatan->bukti_gambar,
-                    'scan_pdf' => $highestSuratPeringatan->scan_pdf,
-                    'id_account_officer' => $highestSuratPeringatan->id_account_officer,
-                    // Tambahkan atribut lain dari Surat Peringatan yang diperlukan
-                ] : null,
+                'surat_peringatan' => $allSuratPeringatan->toArray(), // Convert collection to array
             ];
         });
 
         Log::info('Customers fetched successfully', ['customers' => $nasabahs->toArray()]);
         return response()->json($nasabahs->toArray());
     }
+
+
 
 
     public function checkConnection()

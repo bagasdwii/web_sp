@@ -67,7 +67,7 @@ class UserSeeder extends Seeder
             $counts[$jabatanId]++;
 
             // Dispatch event secara manual
-            Event::dispatch(new UserRegisteredMobile($user));
+            // Event::dispatch(new UserRegisteredMobile($user));
         }
     }
 }
