@@ -641,10 +641,18 @@ class RegisteredUserController extends Controller
                 'tingkat' => 'required|integer',
                 'tanggal' => 'required|date',
                 'keterangan' => 'nullable|string',
-                'bukti_gambar' => 'image|mimes:jpeg,png,jpg,gif', // Validate image file
+                'bukti_gambar' => 'required|image|mimes:jpeg,png,jpg,gif', // Validate image file
                 'scan_pdf' => 'required|mimes:pdf|max:2048', // Validate PDF file
                 'idAccountOfficer' => 'required|integer'
             ]);
+
+            // Log file details before saving
+            if ($request->hasFile('bukti_gambar')) {
+                Log::info('bukti_gambar: ' . $request->file('bukti_gambar')->getClientOriginalName() . ', size: ' . $request->file('bukti_gambar')->getSize() . ' bytes');
+            }
+            if ($request->hasFile('scan_pdf')) {
+                Log::info('scan_pdf: ' . $request->file('scan_pdf')->getClientOriginalName() . ', size: ' . $request->file('scan_pdf')->getSize() . ' bytes');
+            }
 
             // Ambil tingkat untuk digunakan dalam nama file
             $tingkat = $validated['tingkat'];
@@ -715,6 +723,7 @@ class RegisteredUserController extends Controller
             return response()->json(['error' => 'Terjadi kesalahan saat menyimpan surat peringatan.'], 500);
         }
     }
+
 
     public function getNasabah(Request $request)
     {
