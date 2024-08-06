@@ -18,11 +18,19 @@ return new class extends Migration
         $table->timestamp('email_verified_at')->nullable();
         $table->string('password');
         $table->string('api_token')->unique()->nullable()->default(null);
-        $table->unsignedBigInteger('nip')->nullable();
+        $table->unsignedBigInteger('key')->nullable();
+        $table->foreignId('status')->nullable();
         $table->foreignId('jabatan_id');
+        $table->foreignId('id_cabang')->nullable();
+        $table->foreignId('id_wilayah')->nullable();
+
+
         $table->rememberToken();
         $table->timestamps();
-        $table->foreign('nip')->references('nip')->on('nips')->onDelete('cascade');
+        $table->foreign('status')->references('id')->on('statuses')->onDelete('cascade');
+        $table->foreign('id_cabang')->references('id_cabang')->on('cabangs')->onDelete('cascade');
+        $table->foreign('id_wilayah')->references('id_wilayah')->on('wilayahs')->onDelete('cascade');
+        $table->foreign('key')->references('key')->on('keys')->onDelete('cascade');
 
     });
 

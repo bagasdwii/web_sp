@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Models\Key;
 use App\Models\Nip;
 use App\Models\User;
 use App\Models\Cabang;
-use App\Models\Direksi;
 
+use App\Models\Status;
+use App\Models\Direksi;
 use App\Models\Jabatan;
 use App\Models\Nasabah;
 use App\Models\Wilayah;
@@ -192,7 +194,7 @@ class RegisteredUserController extends Controller
             $user->load('pegawaiAdminKas.cabang', 'pegawaiAdminKas.wilayah', 'pegawaiAdminKas.supervisor');
         } else if ($jabatan->id_jabatan == 5) {
             $user->load('pegawaiAccountOfficer.cabang', 'pegawaiAccountOfficer.wilayah', 'pegawaiAccountOfficer.adminKas');
-        }
+        } 
     
         Log::info('User loaded with relations: ' . $user);
     
@@ -273,6 +275,54 @@ class RegisteredUserController extends Controller
     }
     
 
+    // public function register(Request $request)
+    // {
+    //     // Validasi input dengan pesan dalam bahasa Indonesia
+    //     $validator = Validator::make($request->all(), [
+    //         'name' => 'required',
+    //         'email' => 'required|email|unique:users',
+    //         'password' => 'required|min:8',
+    //         'nip' => 'required|integer',
+    //     ], [
+    //         'required' => 'Kolom :attribute wajib diisi',
+    //         'email' => 'Format :attribute tidak valid',
+    //         'unique' => ':attribute sudah digunakan',
+    //         'min' => 'Minimal :attribute karakter 8 karakter',
+    //         'integer' => 'Kolom :attribute harus berupa angka',
+    //     ]);
+    
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'message' => 'Validasi gagal',
+    //             'errors' => $validator->errors(),
+    //         ], 422);
+    //     }
+    
+    //     // Cek apakah NIP ada di tabel Nip
+    //     $nipExists = Nip::where('nip', $request->nip)->exists();
+    //     if (!$nipExists) {
+    //         return response()->json(['message' => 'Key tidak valid.'], 422);
+    //     }
+    
+    //     // Cek apakah NIP sudah digunakan di tabel users
+    //     $nipUsed = User::where('nip', $request->nip)->exists();
+    //     if ($nipUsed) {
+    //         return response()->json(['message' => 'Key sudah digunakan.'], 422);
+    //     }
+    
+    //     // Buat user baru
+    //     $user = User::create([
+    //         'name' => $request->name,
+    //         'email' => $request->email,
+    //         'password' => bcrypt($request->password),
+    //         'jabatan_id' => $request->jabatan_id,
+    //         'nip' => $request->nip, // Simpan NIP
+    //     ]);
+    
+    //     // Respon dengan user yang baru dibuat
+    //     return response()->json(['message' => 'User berhasil terdaftar', 'user' => $user], 201);
+    // }
+    
     public function register(Request $request)
     {
         // Validasi input dengan pesan dalam bahasa Indonesia
@@ -280,14 +330,13 @@ class RegisteredUserController extends Controller
             'name' => 'required',
             'email' => 'required|email|unique:users',
             'password' => 'required|min:8',
-            'jabatan_id' => 'required|integer',
-            'nip' => 'required|integer',
+            'key' => 'required|integer',
         ], [
-            'required' => 'Kolom :attribute wajib diisi.',
-            'email' => 'Format :attribute tidak valid.',
-            'unique' => ':attribute sudah digunakan.',
-            'min' => 'Minimal :attribute karakter.',
-            'integer' => 'Kolom :attribute harus berupa angka.',
+            'required' => 'Kolom :attribute wajib diisi',
+            'email' => 'Format :attribute tidak valid',
+            'unique' => ':attribute sudah digunakan',
+            'min' => 'Minimal :attribute karakter 8 karakter',
+            'integer' => 'Kolom :attribute harus berupa angka',
         ]);
     
         if ($validator->fails()) {
@@ -297,16 +346,16 @@ class RegisteredUserController extends Controller
             ], 422);
         }
     
-        // Cek apakah NIP ada di tabel Nip
-        $nipExists = Nip::where('nip', $request->nip)->exists();
-        if (!$nipExists) {
-            return response()->json(['message' => 'NIP tidak valid.'], 422);
+        // Cek apakah key ada di tabel keys
+        $keyRecord = Key::where('key', $request->key)->first();
+        if (!$keyRecord) {
+            return response()->json(['message' => 'Key tidak valid.'], 422);
         }
     
-        // Cek apakah NIP sudah digunakan di tabel users
-        $nipUsed = User::where('nip', $request->nip)->exists();
-        if ($nipUsed) {
-            return response()->json(['message' => 'NIP sudah digunakan.'], 422);
+        // Cek apakah key sudah digunakan di tabel users
+        $keyUsed = User::where('key', $request->key)->exists();
+        if ($keyUsed) {
+            return response()->json(['message' => 'Key sudah digunakan.'], 422);
         }
     
         // Buat user baru
@@ -314,15 +363,14 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => bcrypt($request->password),
-            'jabatan_id' => $request->jabatan_id,
-            'nip' => $request->nip, // Simpan NIP
+            'jabatan_id' => $keyRecord->jabatan, // Ambil jabatan dari tabel keys
+            'key' => $request->key, // Simpan key
         ]);
     
         // Respon dengan user yang baru dibuat
         return response()->json(['message' => 'User berhasil terdaftar', 'user' => $user], 201);
     }
     
-
     
     public function login(Request $request)
     {
@@ -330,6 +378,14 @@ class RegisteredUserController extends Controller
             'email' => 'required|email',
             'password' => 'required',
         ]);
+        $user = User::where('email', $request->email)->first();
+
+    
+        if ($user->status != '1') {
+            return response()->json([
+                'message' => 'Akun belum aktif, hubungi admin.',
+            ], 403); // Forbidden status code
+        }
 
         // Attempt to authenticate the user
         if (Auth::attempt($credentials)) {
@@ -347,13 +403,15 @@ class RegisteredUserController extends Controller
             return response()->json([
                 'user_id' => $user->id,
                 'token' => $token,
+                'jabatan_id' => $user->jabatan_id,
+                'name' => $user->name
                 
             ]);
         }
 
         // If authentication fails
         return response()->json([
-            'message' => 'The provided credentials do not match our records.',
+            'message' => 'Email atau password yang Anda masukkan salah.',
         ], 401); // Unauthorized status code
     }
 
@@ -366,245 +424,13 @@ class RegisteredUserController extends Controller
             'message' => 'success'
         ]);
     }
-    public function jabatan()
-    {
-        $jabatan = Jabatan::all();
-        return response()->json($jabatan);
-    }
-    public function cabang()
-    {
-        $cabang = Cabang::all();
-        return response()->json($cabang);
-    }
-    public function wilayah()
-    {
-        $wilayah = Wilayah::all();
-        return response()->json($wilayah);
-    }
-    public function direksi()
-    {
-        $direksi = Direksi::all();
-        return response()->json($direksi);
-    }
-    public function kepalacabang()
-    {
-        $kepalacabang = PegawaiKepalaCabang::all();
-        return response()->json($kepalacabang);
-    }
-    public function supervisor()
-    {
-        $supervisor = PegawaiSupervisor::all();
-        return response()->json($supervisor);
-    }
-    public function adminkas()
-    {
-        $adminkas = PegawaiAdminKas::all();
-        return response()->json($adminkas);
-    }
+    
     public function accountofficer()
     {
         $accountofficer = PegawaiAccountOffice::all();
         return response()->json($accountofficer);
     }
-    public function updateKepalaCabang(Request $request)
-    {
-        // Log the beginning of the request
-        Log::info('updateCabang request received', $request->all());
 
-        // Validate the request
-        $validated = $request->validate([
-            'id_cabang' => 'required|integer',
-            'id_user' => 'required|integer',
-            'id_direksi' => 'required|integer'
-        ]);
-
-        Log::info('Validated data', $validated);
-
-        // Find the pegawai_kepala_cabang record for the user
-        $pegawaiKepalaCabang = PegawaiKepalaCabang::where('id_user', $validated['id_user'])->first();
-
-        if ($pegawaiKepalaCabang) {
-            Log::info('PegawaiKepalaCabang found', ['id_user' => $validated['id_user']]);
-
-            $pegawaiKepalaCabang->id_cabang = $validated['id_cabang'];
-            $pegawaiKepalaCabang->id_direksi = $validated['id_direksi'];
-            $pegawaiKepalaCabang->save();
-
-            Log::info('PegawaiKepalaCabang updated', $pegawaiKepalaCabang->toArray());
-
-            return response()->json(['message' => 'Update berhasil'], 200);
-        } else {
-            Log::warning('Pegawai tidak ditemukan', ['id_user' => $validated['id_user']]);
-            return response()->json(['message' => 'Pegawai tidak ditemukan'], 404);
-        }
-    }
-    public function updateSupervisor(Request $request)
-    {
-        // Log the beginning of the request
-        Log::info('updateSupervisorrequest received', $request->all());
-
-        // Validate the request
-        $validated = $request->validate([
-            'id_cabang' => 'required|integer',
-            'id_user' => 'required|integer',
-            'id_wilayah' => 'required|integer',
-            'id_kepala_cabang' => 'required|integer'
-        ]);
-
-        Log::info('Validated data', $validated);
-
-        // Find the pegawaiSupervisor record for the user
-        $pegawaiSupervisor = PegawaiSupervisor::where('id_user', $validated['id_user'])->first();
-
-        if ($pegawaiSupervisor) {
-            Log::info('pegawaiSupervisor found', ['id_user' => $validated['id_user']]);
-
-            $pegawaiSupervisor->id_cabang = $validated['id_cabang'];
-            $pegawaiSupervisor->id_wilayah = $validated['id_wilayah'];
-            $pegawaiSupervisor->id_kepala_cabang = $validated['id_kepala_cabang'];
-            $pegawaiSupervisor->save();
-
-            Log::info('pegawaiSupervisor updated', $pegawaiSupervisor->toArray());
-
-            return response()->json(['message' => 'Update berhasil'], 200);
-        } else {
-            Log::warning('Pegawai tidak ditemukan', ['id_user' => $validated['id_user']]);
-            return response()->json(['message' => 'Pegawai tidak ditemukan'], 404);
-        }
-    }
-
-    public function updateAdminKas(Request $request)
-    {
-        // Log the beginning of the request
-        Log::info('updateAdminKasrequest received', $request->all());
-
-        // Validate the request
-        $validated = $request->validate([
-            'id_cabang' => 'required|integer',
-            'id_user' => 'required|integer',
-            'id_wilayah' => 'required|integer',
-            'id_supervisor' => 'required|integer'
-        ]);
-
-        Log::info('Validated data', $validated);
-
-        // Find the pegawaiAdminKas record for the user
-        $pegawaiAdminKas = PegawaiAdminKas::where('id_user', $validated['id_user'])->first();
-
-        if ($pegawaiAdminKas) {
-            Log::info('pegawaiAdminKas found', ['id_user' => $validated['id_user']]);
-
-            $pegawaiAdminKas->id_cabang = $validated['id_cabang'];
-            $pegawaiAdminKas->id_wilayah = $validated['id_wilayah'];
-            $pegawaiAdminKas->id_supervisor = $validated['id_supervisor'];
-            $pegawaiAdminKas->save();
-
-            Log::info('pegawaiAdminKas updated', $pegawaiAdminKas->toArray());
-
-            return response()->json(['message' => 'Update berhasil'], 200);
-        } else {
-            Log::warning('Pegawai tidak ditemukan', ['id_user' => $validated['id_user']]);
-            return response()->json(['message' => 'Pegawai tidak ditemukan'], 404);
-        }
-    }
-
-    public function updateAccountOfficer(Request $request)
-    {
-        // Log the beginning of the request
-        Log::info('updateAccountOfficer request received', $request->all());
-
-        // Validate the request
-        $validated = $request->validate([
-            'id_cabang' => 'required|integer',
-            'id_user' => 'required|integer',
-            'id_wilayah' => 'required|integer',
-            'id_admin_kas' => 'required|integer'
-        ]);
-
-        Log::info('Validated data', $validated);
-
-        // Find the pegawaiAccountOfficer record for the user
-        $pegawaiAccountOfficer = PegawaiAccountOffice::where('id_user', $validated['id_user'])->first();
-
-        if ($pegawaiAccountOfficer) {
-            Log::info('pegawaiAccountOfficer found', ['id_user' => $validated['id_user']]);
-
-            $pegawaiAccountOfficer->id_cabang = $validated['id_cabang'];
-            $pegawaiAccountOfficer->id_wilayah = $validated['id_wilayah'];
-            $pegawaiAccountOfficer->id_admin_kas = $validated['id_admin_kas'];
-            $pegawaiAccountOfficer->save();
-
-            Log::info('pegawaiAccountOfficer updated', $pegawaiAccountOfficer->toArray());
-
-            return response()->json(['message' => 'Update berhasil'], 200);
-        } else {
-            Log::warning('Pegawai tidak ditemukan', ['id_user' => $validated['id_user']]);
-            return response()->json(['message' => 'Pegawai tidak ditemukan'], 404);
-        }
-    }
-    // public function getNasabah(Request $request)
-    // {
-    //     Log::info('Request received for getCustomers', ['request' => $request->all()]);
-    //     $user = Auth::user();
-    //     Log::info('Authenticated user', ['user' => $user]);
-    //     $jabatan = $user->jabatan->nama_jabatan;
-    //     Log::info('Jabatan user', ['user' => $jabatan]);
-
-    //     $perPage = 15; // Jumlah nasabah per halaman
-    //     $query = Nasabah::with('cabang'); // Lakukan eager loading untuk tabel cabang
-
-    //     switch ($jabatan) {
-    //         case 'Direksi':
-    //             // Tidak ada filter tambahan
-    //             Log::info('Jabatan: direksi - fetching all nasabahs');
-    //             break;
-
-    //         case 'Kepala Cabang':
-    //             $pegawaiKepalaCabang = PegawaiKepalaCabang::where('id_user', $user->id)->first();
-    //             if ($pegawaiKepalaCabang) {
-    //                 $idCabang = $pegawaiKepalaCabang->id_cabang;
-    //                 Log::info('Jabatan: kepala_cabang - fetching nasabahs for cabang', ['id_cabang' => $idCabang]);
-    //                 $query->where('id_cabang', $idCabang);
-    //             } else {
-    //                 return response()->json(['error' => 'Cabang not found for this Kepala Cabang'], 403);
-    //             }
-    //             break;
-
-    //         case 'Supervisor':
-    //             Log::info('Jabatan: supervisor - fetching nasabahs for cabang and wilayah', ['id_cabang' => $user->id_cabang, 'id_wilayah' => $user->id_wilayah]);
-    //             $query->where('id_cabang', $user->id_cabang)
-    //                 ->where('id_wilayah', $user->id_wilayah);
-    //             break;
-
-    //         case 'Admin Kas':
-    //             Log::info('Jabatan: admin_kas - fetching nasabahs for admin_kas', ['id_admin_kas' => $user->id]);
-    //             $query->where('id_admin_kas', $user->id);
-    //             break;
-
-    //         case 'Account Officer':
-    //             Log::info('Jabatan: account_officer - fetching nasabahs for account_officer', ['id_account_officer' => $user->id]);
-    //             $query->where('id_account_officer', $user->id);
-    //             break;
-
-    //         default:
-    //             return response()->json(['error' => 'Unauthorized'], 403);
-    //     }
-
-    //     if ($request->has('search')) {
-    //         $search = $request->search;
-    //         Log::info('Search parameter provided', ['search' => $search]);
-    //         $query->where(function ($q) use ($search) {
-    //             $q->where('nama', 'LIKE', '%' . $search . '%')
-    //             ->orWhereHas('cabang', function($q) use ($search) {
-    //                 $q->where('nama_cabang', 'LIKE', '%' . $search . '%');
-    //             });
-    //         });
-    //     }
-
-    //     $nasabahs = $query->paginate($perPage);
-    //     Log::info('Customers fetched successfully', ['customers' => $nasabahs]);
-    //     return response()->json($nasabahs);
-    // }
     public function getNasabahSP()
     {
         $user = Auth::user();
@@ -630,6 +456,7 @@ class RegisteredUserController extends Controller
         }
     }
 
+
     public function SuratPeringatan(Request $request)
     {
         try {
@@ -640,10 +467,9 @@ class RegisteredUserController extends Controller
                 'no' => 'required|integer',
                 'tingkat' => 'required|integer',
                 'tanggal' => 'required|date',
-                'keterangan' => 'nullable|string',
                 'bukti_gambar' => 'required|image|mimes:jpeg,png,jpg,gif', // Validate image file
                 'scan_pdf' => 'required|mimes:pdf|max:2048', // Validate PDF file
-                'idAccountOfficer' => 'required|integer'
+                'id_account_officer' => 'required'
             ]);
 
             // Log file details before saving
@@ -702,10 +528,9 @@ class RegisteredUserController extends Controller
                 'no' => $validated['no'],
                 'tingkat' => $validated['tingkat'],
                 'tanggal' => $validated['tanggal'],
-                'keterangan' => $validated['keterangan'],
                 'bukti_gambar' => $buktiGambarPath,
                 'scan_pdf' => $scanPdfPath,
-                'id_account_officer' => $validated['idAccountOfficer'],
+                'id_account_officer' => $validated['id_account_officer'],
             ]);
 
             Log::info('Surat peringatan berhasil dibuat: ' . json_encode($suratPeringatan));
@@ -836,8 +661,19 @@ class RegisteredUserController extends Controller
             return [
                 'no' => $nasabah->no,
                 'nama' => $nasabah->nama,
-                'nama_cabang' => $nasabah->cabang->nama_cabang,
-                'surat_peringatan' => $allSuratPeringatan->toArray(), // Convert collection to array
+                'pokok' => $nasabah->pokok,
+                'bunga' => $nasabah->bunga,
+                'denda' => $nasabah->denda,
+                'total' => $nasabah->total,
+                'keterangan' => $nasabah->keterangan,
+                'ttd' => $nasabah->ttd,
+                'kembali' => $nasabah->kembali,
+                'cabang' => $nasabah->cabang->nama_cabang,
+                'wilayah' => $nasabah->wilayah->nama_wilayah,
+                'adminKas' => $nasabah->adminkas->nama_admin_kas,
+                'accountOfficer' => $nasabah->accountofficer->nama_account_officer,
+
+                'suratPeringatan' => $allSuratPeringatan->toArray(), // Convert collection to array
             ];
         });
 
@@ -845,6 +681,54 @@ class RegisteredUserController extends Controller
         return response()->json($nasabahs->toArray());
     }
 
+    // public function getUserAdmin(Request $request)
+    // {
+    //     Log::info('Request received for getUsers', ['request' => $request->all()]);
+        
+    //     $perPage = 15; // Jumlah pengguna per halaman
+    
+    //     // Eager load semua relasi yang diperlukan
+    //     $query = User::with([
+    //         'jabatan',
+    //         // 'cabang:id_cabang,nama_cabang',
+    //         // 'wilayah:id_wilayah,nama_wilayah'
+    //     ]);
+    
+    //     // if ($request->has('search')) {
+    //     //     $search = $request->search;
+    //     //     Log::info('Search parameter provided', ['search' => $search]);
+    //     //     $query->where(function ($q) use ($search) {
+    //     //         $q->where('name', 'LIKE', '%' . $search . '%')
+    //     //             ->orWhere('email', 'LIKE', '%' . $search . '%')
+    //     //             ->orWhereHas('cabang', function($q) use ($search) {
+    //     //                 $q->where('nama_cabang', 'LIKE', '%' . $search . '%');
+    //     //             })
+    //     //             ->orWhereHas('wilayah', function($q) use ($search) {
+    //     //                 $q->where('nama_wilayah', 'LIKE', '%' . $search . '%');
+    //     //             });
+    //     //     });
+    //     // }
+    
+    //     Log::info('Executing query to fetch users');
+    //     $users = $query->paginate($perPage);
+    
+    //     Log::info('Transforming user data to include all relations');
+    //     $users->getCollection()->transform(function($user) {
+    //         return [
+    //             'id' => $user->id,
+    //             'name' => $user->name,
+    //             'email' => $user->email,
+    //             'jabatan' => $user->jabatan ? $user->jabatan->nama_jabatan : null,
+    //             // 'cabang' => $user->cabang ? $user->cabang->nama_cabang : null,
+    //             // 'wilayah' => $user->wilayah ? $user->wilayah->nama_wilayah : null,
+    //         ];
+    //     });
+    
+    //     Log::info('Users fetched successfully', ['users' => $users->toArray()]);
+    //     return response()->json($users->toArray());
+    // }
+    
+    
 
 
 
@@ -915,6 +799,292 @@ class RegisteredUserController extends Controller
         }
     }
     
+    public function getUserAdmin(Request $request)
+    {
+        Log::info('Request received for getUsers', ['request' => $request->all()]);
+        
+        $perPage = 15; // Jumlah pengguna per halaman
+
+        // Eager load semua relasi yang diperlukan
+        $query = User::with([
+            'jabatan',
+            'infostatus',
+            'direksi:id_direksi,nama',
+            'pegawaiKepalaCabang.cabang:id_cabang,nama_cabang',
+            'pegawaiSupervisor.cabang:id_cabang,nama_cabang',
+            'pegawaiAdminKas.cabang:id_cabang,nama_cabang',
+            'pegawaiAccountOfficer.cabang:id_cabang,nama_cabang',
+            'pegawaiSupervisor.wilayah:id_wilayah,nama_wilayah',
+            'pegawaiAdminKas.wilayah:id_wilayah,nama_wilayah',
+            'pegawaiAccountOfficer.wilayah:id_wilayah,nama_wilayah'
+        ]);
+
+        if ($request->has('search')) {
+            $search = $request->search;
+            Log::info('Search parameter provided', ['search' => $search]);
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'LIKE', '%' . $search . '%')
+                    ->orWhere('email', 'LIKE', '%' . $search . '%')
+                    ->orWhereHas('direksi', function($q) use ($search) {
+                        $q->where('nama', 'LIKE', '%' . $search . '%');
+                    })
+                    ->orWhereHas('pegawaiKepalaCabang.cabang', function($q) use ($search) {
+                        $q->where('nama_cabang', 'LIKE', '%' . $search . '%');
+                    })
+                    ->orWhereHas('pegawaiSupervisor.cabang', function($q) use ($search) {
+                        $q->where('nama_cabang', 'LIKE', '%' . $search . '%');
+                    })
+                    ->orWhereHas('pegawaiAdminKas.cabang', function($q) use ($search) {
+                        $q->where('nama_cabang', 'LIKE', '%' . $search . '%');
+                    })
+                    ->orWhereHas('pegawaiAccountOfficer.cabang', function($q) use ($search) {
+                        $q->where('nama_cabang', 'LIKE', '%' . $search . '%');
+                    })
+                    ->orWhereHas('pegawaiSupervisor.wilayah', function($q) use ($search) {
+                        $q->where('nama_wilayah', 'LIKE', '%' . $search . '%');
+                    })
+                    ->orWhereHas('pegawaiAdminKas.wilayah', function($q) use ($search) {
+                        $q->where('nama_wilayah', 'LIKE', '%' . $search . '%');
+                    })
+                    ->orWhereHas('pegawaiAccountOfficer.wilayah', function($q) use ($search) {
+                        $q->where('nama_wilayah', 'LIKE', '%' . $search . '%');
+                    });
+            });
+        }
+
+        Log::info('Executing query to fetch users');
+        $users = $query->paginate($perPage);
+
+        Log::info('Transforming user data to include all relations');
+        
+        $users->getCollection()->transform(function($user) {
+            Log::info('Transforming user', ['user' => $user]);
+            Log::info('User status', ['status' => $user->status]);
+            $cabang = $user->pegawaiKepalaCabang ? $user->pegawaiKepalaCabang->cabang :
+                    ($user->pegawaiSupervisor ? $user->pegawaiSupervisor->cabang :
+                    ($user->pegawaiAdminKas ? $user->pegawaiAdminKas->cabang :
+                    ($user->pegawaiAccountOfficer ? $user->pegawaiAccountOfficer->cabang : null)));
+
+            $wilayah = 
+                 
+                    $user->pegawaiSupervisor ? $user->pegawaiSupervisor->wilayah :
+                    ($user->pegawaiAdminKas ? $user->pegawaiAdminKas->wilayah :
+                    ($user->pegawaiAccountOfficer ? $user->pegawaiAccountOfficer->wilayah : null));
+
+            $direksi = $user->pegawaiKepalaCabang ? $user->pegawaiKepalaCabang->direksi :null;
+            $kepalaCabang = $user->pegawaiSupervisor ? $user->pegawaiSupervisor->kepalaCabang :null;
+            $superVisor = $user->pegawaiAdminKas ? $user->pegawaiAdminKas->supervisor :null;
+            $adminKas = $user->pegawaiAccountOfficer ? $user->pegawaiAccountOfficer->adminKas :null;
+            // $status = $user->status ? $user->status : null;
+            // $statuus = $user->infostatus ? $user->infostatus->infostatus :null;
+
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'jabatan' => $user->jabatan ? $user->jabatan->nama_jabatan : null,
+                'id_jabatan' => $user->jabatan ? $user->jabatan->id_jabatan : null,
+                'cabang' => $cabang ? $cabang->nama_cabang : null,
+                'id_cabang' => $cabang ? $cabang->id_cabang : null,
+                'wilayah' => $wilayah ? $wilayah->nama_wilayah : null,
+                'id_wilayah' => $wilayah ? $wilayah->id_wilayah : null,
+                'id_direksi' => $direksi ? $direksi->nama : null,
+                'direksi_id' => $direksi ? $direksi->id_direksi : null,
+                'id_kepala_cabang' => $kepalaCabang ? $kepalaCabang->nama_kepala_cabang : null,
+                'kepalacabang_id' => $kepalaCabang ? $kepalaCabang->id_kepala_cabang : null,
+                'id_supervisor' => $superVisor ? $superVisor->nama_supervisor : null,
+                'supervisor_id' => $superVisor ? $superVisor->id_supervisor : null,
+                'id_admin_kas' => $adminKas ? $adminKas->nama_admin_kas : null,
+                'adminkas_id' => $adminKas ? $adminKas->id_admin_kas : null,
+                'status' => $user->infostatus ? $user->infostatus->nama_status : null,
+                'status_id' => $user->infostatus ? $user->infostatus->id : null,
+
+            ];
+        });
+
+        Log::info('Users fetched successfully', ['users' => $users->toArray()]);
+        return response()->json($users->toArray());
+    }
+    public function jabatan()
+    {
+        $jabatan = Jabatan::all();
+        return response()->json($jabatan);
+    }
+    public function cabang()
+    {
+        $cabang = Cabang::all();
+        return response()->json($cabang);
+    }
+    public function wilayah()
+    {
+        $wilayah = Wilayah::all();
+        return response()->json($wilayah);
+    }
+    public function direksi()
+    {
+        $direksi = Direksi::all();
+        return response()->json($direksi);
+    }
+    public function kepalacabang()
+    {
+        $kepalacabang = PegawaiKepalaCabang::all();
+        return response()->json($kepalacabang);
+    }
+    public function supervisor()
+    {
+        $supervisor = PegawaiSupervisor::all();
+        return response()->json($supervisor);
+    }
+    public function adminkas()
+    {
+        $adminkas = PegawaiAdminKas::all();
+        return response()->json($adminkas);
+    }
+    public function getAllData()
+    {
+        $jabatan = Jabatan::all();
+        $cabang = Cabang::all();
+        $wilayah = Wilayah::all();
+        $direksi = Direksi::all();
+        $kepalaCabang = PegawaiKepalaCabang::all();
+        $supervisor = PegawaiSupervisor::all();
+        $adminKas = PegawaiAdminKas::all();
+        $status = Status::all(); // Assuming you have a Status model for infostatus
+
+        return response()->json([
+            'jabatan' => $jabatan,
+            'cabang' => $cabang,
+            'wilayah' => $wilayah,
+            'direksi' => $direksi,
+            'kepala_cabang' => $kepalaCabang,
+            'supervisor' => $supervisor,
+            'admin_kas' => $adminKas,
+            'status' => $status
+        ]);
+    }
+    public function updateUser(Request $request, $id)
+{
+    Log::info('Update user request received', ['id' => $id, 'request_data' => $request->all()]);
+
+    try {
+        // Validasi input
+        $validated = $request->validate([
+            'name' => 'required|string',
+            'email' => 'required|string',
+            'jabatan' => 'required|integer',
+            'cabang' => 'nullable|integer',
+            'wilayah' => 'nullable|integer',
+            'id_direksi' => 'nullable|integer',
+            'id_kepala_cabang' => 'nullable|integer',
+            'id_supervisor' => 'nullable|integer',
+            'id_admin_kas' => 'nullable|integer',
+            'status' => 'nullable|integer',
+        ]);
+
+        Log::info('Input validated', ['validated_data' => $validated]);
+    } catch (ValidationException $e) {
+        Log::error('Validation failed', ['errors' => $e->errors()]);
+        return response()->json(['message' => 'Validation failed', 'errors' => $e->errors()], 422);
+    }
+
+    // Cari pengguna berdasarkan ID
+    $user = User::find($id);
+
+    if (!$user) {
+        Log::warning('User not found', ['id' => $id]);
+        return response()->json(['message' => 'User not found'], 404);
+    }
+
+    Log::info('User found', ['user' => $user]);
+
+   
+
+    // Update tabel berdasarkan jabatan
+    switch (strtolower($validated['jabatan'])) {
+        case '1':
+            Log::info('Updating Direksi table', ['user_id' => $id]);
+            $direksi = Direksi::find($id);
+            if ($direksi) {
+                $direksi->name = $validated['name'];
+                $direksi->email = $validated['email'];
+                $direksi->cabang = $validated['cabang'];
+                $direksi->save();
+                Log::info('Direksi data updated successfully', ['direksi' => $direksi]);
+            } else {
+                Log::warning('Direksi not found', ['id' => $id]);
+            }
+            break;
+
+        case '2':
+            Log::info('Updating Kepala Cabang table', ['user_id' => $id]);
+            $kepalaCabang = PegawaiKepalaCabang::find($id);
+            if ($kepalaCabang) {
+                $kepalaCabang->name = $validated['name'];
+                $kepalaCabang->email = $validated['email'];
+                $kepalaCabang->wilayah = $validated['wilayah'];
+                $kepalaCabang->save();
+                Log::info('Kepala Cabang data updated successfully', ['kepalaCabang' => $kepalaCabang]);
+            } else {
+                Log::warning('Kepala Cabang not found', ['id' => $id]);
+            }
+            break;
+
+        case '3':
+            Log::info('Updating Supervisor table', ['user_id' => $id]);
+            $supervisor = PegawaiSupervisor::find($id);
+            if ($supervisor) {
+                $supervisor->name = $validated['name'];
+                $supervisor->email = $validated['email'];
+                $supervisor->save();
+                Log::info('Supervisor data updated successfully', ['supervisor' => $supervisor]);
+            } else {
+                Log::warning('Supervisor not found', ['id' => $id]);
+            }
+            break;
+
+        case '4':
+            Log::info('Updating Admin Kas table', ['user_id' => $id]);
+            $adminKas = PegawaiAdminKas::find($id);
+            if ($adminKas) {
+                $adminKas->name = $validated['name'];
+                $adminKas->email = $validated['email'];
+                $adminKas->save();
+                Log::info('Admin Kas data updated successfully', ['adminKas' => $adminKas]);
+            } else {
+                Log::warning('Admin Kas not found', ['id' => $id]);
+            }
+            break;
+
+        case '5':
+            Log::info('Updating Account Officer table', ['user_id' => $id]);
+            $accountOfficer = PegawaiAccountOffice::find($id);
+            if ($accountOfficer) {
+                $accountOfficer->id_cabang = $validated['cabang'];
+                $accountOfficer->id_wilayah = $validated['wilayah'];
+                $accountOfficer->id_admin_kas = $validated['id_admin_kas'];
+                $user->status = $validated['status'];
+                $accountOfficer->save();
+                $user->save();
+                Log::info('Account Officer data updated successfully', ['accountOfficer' => $accountOfficer]);
+                Log::info('user data updated successfully', ['user' => $user]);
+            } else {
+                Log::warning('Account Officer not found', ['id' => $id]);
+            }
+            break;
+
+        default:
+            Log::error('Invalid jabatan provided', ['jabatan' => $validated['jabatan']]);
+            return response()->json(['message' => 'Invalid jabatan'], 400);
+    }
+
+    Log::info('User update process completed', ['user_id' => $id]);
+
+    return response()->json(['message' => 'User updated successfully'], 200);
+}
+
+
+
+
 
 
 }

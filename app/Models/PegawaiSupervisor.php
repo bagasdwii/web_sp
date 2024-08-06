@@ -12,7 +12,10 @@ class PegawaiSupervisor extends Model
     protected $table = 'pegawai_supervisors'; // Sesuaikan dengan nama tabel yang sesuai
     protected $primaryKey = 'id_supervisor'; // Atur primary key jika perlu
 
-
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'id_user', 'id'); // Foreign key 'id_user' di tabel 'direksi' yang merujuk ke 'id' di tabel 'users'
+    }
     public function cabang()
     {
         return $this->belongsTo(Cabang::class, 'id_cabang');

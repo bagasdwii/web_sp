@@ -16,8 +16,7 @@ return new class extends Migration
                 $table->id('id_peringatan');
                 $table->unsignedBigInteger('no');
                 $table->integer('tingkat');
-                $table->date('tanggal');
-                $table->text('keterangan')->nullable();
+                $table->datetime('tanggal');
                 $table->string('bukti_gambar');
                 $table->string('scan_pdf');
                 $table->unsignedBigInteger('id_account_officer');

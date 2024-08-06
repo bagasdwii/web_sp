@@ -18,27 +18,22 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 Route::get('checkconnection', [RegisteredUserController::class, 'checkConnection']);
 Route::post('loginmobile',[RegisteredUserController::class, 'login']);
 Route::get('jabatan',[RegisteredUserController::class, 'jabatan']);
-Route::get('cabang',[RegisteredUserController::class, 'cabang']);
-Route::get('wilayah',[RegisteredUserController::class, 'wilayah']);
-Route::get('direksi',[RegisteredUserController::class, 'direksi']);
-Route::get('supervisor',[RegisteredUserController::class, 'supervisor']);
-Route::get('adminkas',[RegisteredUserController::class, 'adminkas']);
-Route::get('accountofficer',[RegisteredUserController::class, 'accountofficer']);
-Route::get('kepalacabang',[RegisteredUserController::class, 'kepalacabang']);
-Route::post('registermobile', [RegisteredUserController::class, 'register']);
-Route::get('surat-peringatan/gambar/{filename}', [RegisteredUserController::class, 'serveImage']);
-Route::get('surat-peringatan/pdf/{filename}', [RegisteredUserController::class ,'servePdf']);
 
-Route::middleware(['auth:api', 'auth.with.api.token:Direksi,Kepala Cabang,Supervisor,Admin Kas,Account Officer'])->group(function () {
+Route::post('registermobile', [RegisteredUserController::class, 'register']);
+
+Route::middleware(['auth:api', 'auth.with.api.token:Direksi,Kepala Cabang,Supervisor,Admin Kas,Account Officer,Admin'])->group(function () {
     
     
     Route::get('nasabah', [RegisteredUserController::class, 'getNasabahSP']);
+    // Route::get('all', [RegisteredUserController::class, 'getAllUser']);
     Route::post('surat_peringatan', [RegisteredUserController::class, 'SuratPeringatan']); // ngirim surat  //
     
+    Route::get('usermobile',[RegisteredUserController::class, 'getUserDetails']);
+    Route::get('usermobileadmin',[RegisteredUserController::class, 'getUserAdmin']);
     
 
-
-    Route::get('nasabah/{id}', [RegisteredUserController::class, 'show']); 
+    Route::get('surat-peringatan/gambar/{filename}', [RegisteredUserController::class, 'serveImage']);
+    Route::get('surat-peringatan/pdf/{filename}', [RegisteredUserController::class ,'servePdf']);
     Route::get('nasabahs', [RegisteredUserController::class, 'getNasabah']);
     Route::get('suratperingatan', [RegisteredUserController::class, 'getSuratPeringatan']);
 
@@ -48,5 +43,17 @@ Route::middleware(['auth:api', 'auth.with.api.token:Direksi,Kepala Cabang,Superv
     Route::post('updatePegawaiAdminKas', [RegisteredUserController::class, 'updateAdminKas']);
     Route::post('updatePegawaiAccountOfficer', [RegisteredUserController::class, 'updateAccountOfficer']);
     Route::post('logoutmobile', [RegisteredUserController::class, 'logout']);
+
+    Route::get('cabang',[RegisteredUserController::class, 'cabang']);
+    Route::get('wilayah',[RegisteredUserController::class, 'wilayah']);
+    Route::get('direksi',[RegisteredUserController::class, 'direksi']);
+    Route::get('supervisor',[RegisteredUserController::class, 'supervisor']);
+    Route::get('adminkas',[RegisteredUserController::class, 'adminkas']);
+    Route::get('accountofficer',[RegisteredUserController::class, 'accountofficer']);
+    Route::get('kepalacabang',[RegisteredUserController::class, 'kepalacabang']);
+    Route::get('jabatanauth',[RegisteredUserController::class, 'jabatan']);
+    Route::get('alldata', [RegisteredUserController::class, 'getAllData']);
+    Route::put('user/update/{id}', [RegisteredUserController::class, 'updateUser']);
+
 
 });

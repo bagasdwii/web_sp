@@ -14,8 +14,8 @@ class Nip extends Model
       
 
     ];
-    public function users()
-    {
-        return $this->hasMany(User::class, 'nip', 'nip');
-    }
+    // public function users()
+    // {
+    //     return $this->hasMany(User::class, 'nip', 'nip');
+    // }
 }

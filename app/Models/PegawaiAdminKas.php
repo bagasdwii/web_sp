@@ -25,6 +25,10 @@ class PegawaiAdminKas extends Model
     {
         return $this->belongsTo(PegawaiSupervisor::class, 'id_supervisor');
     }
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'id_user', 'id'); // Foreign key 'id_user' di tabel 'direksi' yang merujuk ke 'id' di tabel 'users'
+    }
 
     protected $fillable = [
         'id_admin_kas',

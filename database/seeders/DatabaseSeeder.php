@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Database\Seeders\StatusSeeder;
 use Database\Seeders\CabangWilayahSeeder;
 // use Database\Seeders\JabatanSeeder;
 
@@ -22,17 +23,20 @@ class DatabaseSeeder extends Seeder
         //     'email' => 'test@example.com',
         // ]);
         $this->call([
+            KeySeeder::class,
+            StatusSeeder::class,
             WilayahSeeder::class,
             CabangSeeder::class,
             JabatanSeeder::class,
             UserSeeder::class,
+            // NasabahSeeder::class,
+            // KepalaCabangSeeder::class,
+            // SupervisorSeeder::class,
+            // AdminKasSeeder::class,
+            // AccountOfficerSeeder::class,
             NasabahSeeder::class,
-            KepalaCabangSeeder::class,
-            SupervisorSeeder::class,
-            AdminKasSeeder::class,
-            AccountOfficerSeeder::class,
-            NasabahSeeder::class,
-            NipSeeder::class
+            // NipSeeder::class
+           
         ]);
     
     }
